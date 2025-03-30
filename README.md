@@ -15,8 +15,8 @@ As a benefits director, I want to be able to see a list of benefit eligible empl
 |`discounts`|`discount_id[]`|
 |`eligible`|`bool`|
 |`activePolicy`|`bool`|
-|`spouse`|`bool`|
-|`dependents`|`number`|
+|`spouse`|`string`|
+|`dependents`|`string[]`|
 |`pay`|`number`|
 |`payPeriodsPerYear`|`number` or `null`|
   
@@ -50,7 +50,7 @@ As a benefits director, I want to be able to see a list of benefit eligible empl
 |`type`|`string`|
 |`created_at`|`TIMESTAMP DEFAULT CURRENT_TIMESTAMP`|
 
-### Eligible Employee List
+### Employee List
 
 `GET /company/:companyId/employees`
 
@@ -63,7 +63,7 @@ We first want to be able to retrieve a list of all eligible employees, regardles
       "id": 1,
       "firstName": "John",
       "lastName": "Doe",
-      "discounts": [],
+      "discounts": "",
       "eligible": true,
       "activePolicy": true,
       "totalDeduction": 100000
@@ -83,10 +83,14 @@ We first want to be able to retrieve a list of all eligible employees, regardles
   - `discounts`
   - `totalDeduction`
 - Selecting an employee from the list will open a page showing just that employee
+- Create deductions function on the backend
+  - employeeCost + spouseCost + (dependentCost * dependents)
+- Calculate discounts
+  - Apply discounts for both flat rate and percentage based values
 
 ### Benefit Cost Fields
 
-`GET,POST /company/:companyId`
+`GET,PUT,PATCH,DELETE /company/:companyId`
 
 On the employee list, we should be able to set the benefits cost.
 
@@ -105,15 +109,16 @@ On the employee list, we should be able to set the benefits cost.
 #### Acceptance Criteria
 
 - Add a button to unlock the benefit values
-- Allow the `employeeCost`, `spouseCost`, `dependentCost`, and `premiumScheduleMonths` to be change
+- Allow the `employeeCost`, `spouseCost`, `dependentCost`, and `premiumScheduleMonths` to be changed
 - We want to be able to set the default `payPeriodsPerYear` all employees will use, unless given a specific pay period
-- When te values are changed and saved, the list of employees should update to use the new values
+- When the values are changed and saved, the list of employees should update to use the new values
+- Values should be saved in cents to prevent decimal and rounding errors
 
 ### Single Employee View
 
 `GET /company/:companyId/employee/:employeeId`
 
-As a benefits director, I want to be able to see an employee's specific circumstance when it comes to their benefits, cost, and number of dependents. Private data should only be seen while looking at a specific employee.
+As a benefits director, I want to be able to see an employee's specific circumstance when it comes to their benefits, cost, and number of dependents. Private data should only be seen while looking at a specific employee's profile.
 
 ```json
 {
@@ -121,9 +126,9 @@ As a benefits director, I want to be able to see an employee's specific circumst
     "id": 1,
     "firstName": "John",
     "lastName": "Doe",
-    "discounts": [],
-    "spouse": true,
-    "dependents": 0,
+    "discounts": "",
+    "spouse": "Artra Doe",
+    "dependents": "",
     "eligible": true,
     "activePolicy": true,
     "pay": 200000,
@@ -135,9 +140,9 @@ As a benefits director, I want to be able to see an employee's specific circumst
 
 #### Considerations
 
-Since we want to maintain a default `payPeriodsPerYear` unless the employee has a specific requirement for a different pay period schedule, this value should be `null` on the backend while performing the calculation to denote that we are to use the default value.
+Since we want to maintain a default `payPeriodsPerYear` unless the employee has a specific requirement for a different pay period schedule, this value should be `null` on the backend while performing the calculation to denote that we are to use the default value. When the value is displayed, it should either use the employee's set value, or show the default.
 
-In a fast follow, we will want to get a list of all the employee's audits.
+In a fast follow, we will also want to get a list of all the employee's audits of changes displayed on this details page.
 
 #### Acceptance Criteria
 
@@ -152,11 +157,46 @@ In a fast follow, we will want to get a list of all the employee's audits.
   - `activePolicy`
   - `pay`
   - `payPeriodsPerYear`
+  - `totalDeduction`
 - Display what the cost is for the employee for benefits per pay period
+
+### Add new employee
+
+`PUT /company/:companyId/employee/:employeeId`
+
+We want to be able to add new employees
+
+```json
+{
+  "data": {
+    "firstName": "John",
+    "lastName": "Doe",
+    "discounts": "",
+    "spouse": "Artra Doe",
+    "dependents": "",
+    "eligible": true,
+    "activePolicy": true,
+    "pay": 200000,
+    "payPeriodsPerYear": null,
+  }
+}
+```
+
+#### Acceptance Criteria
+
+- Be able to add a new employee from a form
+  - Name
+  - Discounts
+  - Spouse
+  - Dependents
+  - Eligible
+  - Active Policy
+  - Pay
+  - Pay period per year
 
 ### Changing Employee Details
 
-`POST /company/:companyId/employee/:employeeId`
+`PATCH /company/:companyId/employee/:employeeId`
 
 As a benefits director, we will want to be able to make slight adjustments to an employee's account that do not have to happen during open enrollment or as a result of a life event.
 
@@ -165,7 +205,7 @@ As a benefits director, we will want to be able to make slight adjustments to an
   "data": {
     "pay": 3000000,
     "payPeriodPerYear": 12,
-    "discounts": [],
+    "discounts": "",
     "eligible": true
   }
 }
@@ -182,7 +222,7 @@ As a benefits director, we will want to be able to make slight adjustments to an
 
 ### Changing Employee Benefits
 
-`POST /company/:companyId/employee/:employeeId`
+`PATCH /company/:companyId/employee/:employeeId`
 
 We will also want to have the ability to change an employee's elections including turning the policy off or on, adding or removing a spouse, adding or removing dependents. When editing benefits for current employees (adding, removing), we need to be able to determine if the change is during open enrollment or as a result of a qualified life event.
 
@@ -191,10 +231,11 @@ We will also want to have the ability to change an employee's elections includin
   "data": {
     "firstName": "James",
     "lastName": "Bo",
-    "spouse": true,
-    "dependents": 3,
+    "spouse": "Thendeen Bo",
+    "dependents": 
+      "Zepher Bo, Antaries Bo, Cliven Bo",
     "activePolicy": true,
-    "updateTypw": "adoption"
+    "auditReason": "adoption"
   }
 }
 ```
@@ -208,17 +249,39 @@ We will also want to have the ability to change an employee's elections includin
   - `dependents`
   - `activePolicy`
 - We should be able to set what the life event was for reporting and auditing purposes.
-  - `type`
+  - `auditReason`
     - Civil union, birth, adoption, divorce, death, dependent became ineligible, loss of coverage, open enrollment
 - This should be recorded to the `audits` table
-- We should only prompt the user for an update reason if one of the above are being changed. If not, we do not need to ask and there will be no record to pit in the `audits` table
+- We should only prompt the user for an update reason if one of the above are being changed. If not, we do not need to ask and there will be no record to put in the `audits` table
 - The update should be rejected if an audit reason type is not provided
+- We only want to update employees in the director's company
+
+### Add Discount
+
+`PUT,PATCH,GET,DELETE /company/:companyId/discount/:discountId`
+
+We want to be able to set discounts on employees. A discount should have a name and either apply a flat rate, or a percentage value.
+
+```json
+{
+  "data": {
+    "label": "10% for A names",
+    "flatValue": 0,
+    "percentageValue": 0.1,
+    "company_id": 1
+  }
+}
+```
+
+#### Acceptance Criteria
+- Be able to add, update, and delete discounts
+- Be able to apply a discount to an employee while editing the employee's details
 
 ### Add Audit record
 
 `Performed on the backend while updating benefits`
 
-When a life change event results in the change of benefits, we need an `audits` record created stating why the change was made
+When a life event results in the change of benefits, we need an `audits` record created stating why the change was made, who made it, and when.
 
 #### Acceptance Criteria
 
@@ -227,6 +290,14 @@ When a life change event results in the change of benefits, we need an `audits` 
   - Type of change
   - Date of change
   - ID of person making change
+
+## Discussion
+
+- Used SQLite so combining queries was limited
+- Automatic discounts?
+  - I feel if we allow discounts to be added automatically, it would get difficult to maintain unless there was some way we can define a filter from the form. I don't feel it is sustainable to change code in order to apply or remove discounts, they should stream from whoever is adding ones
+- Discount timeframes
+  - If a discount expires, we remove it
 
 ---
   

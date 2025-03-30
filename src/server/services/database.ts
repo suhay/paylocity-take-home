@@ -1,6 +1,6 @@
 import { Database } from 'bun:sqlite'
 
-import { Audit, Company, Discount, Employee } from '../types'
+import { Audit, Company, Discount, Employee } from '../../types'
 
 const db = new Database()
 
@@ -25,8 +25,8 @@ export function setup() {
       discounts TEXT,
       eligible BOOLEAN,
       activePolicy BOOLEAN,
-      spouse BOOLEAN,
-      dependents INTEGER,
+      spouse TEXT,
+      dependents TEXT,
       pay INTEGER,
       payPeriodsPerYear INTEGER,
       CONSTRAINT fk_cId FOREIGN KEY (company_id) REFERENCES companies (id)
@@ -45,8 +45,9 @@ export function setup() {
   db.run(`
     CREATE TABLE IF NOT EXISTS audits(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      employee_id INTEGER,
-      type TEXT,
+      employee_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      author_id INTEGER NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_cId FOREIGN KEY(employee_id) REFERENCES employees(id)
     )`)
@@ -62,16 +63,26 @@ export function setup() {
 
   addCompany(company)
 
+  const discount: Discount = {
+    id: 1,
+    company_id: 1,
+    label: '10% A',
+    flatValue: 0,
+    percentageValue: 0.1,
+  }
+
+  addDiscount(discount)
+
   const employee1: Employee = {
     id: 1,
     company_id: 1,
     firstName: 'John',
     lastName: 'Doe',
-    discounts: '',
+    discounts: '1',
     eligible: true,
     activePolicy: true,
-    spouse: false,
-    dependents: 0,
+    spouse: 'Artra Doe',
+    dependents: '',
     pay: 200000,
     payPeriodsPerYear: null,
   }
@@ -81,13 +92,13 @@ export function setup() {
   const employee2: Employee = {
     id: 2,
     company_id: 1,
-    firstName: 'Alfred',
+    firstName: 'Thane',
     lastName: 'Beard',
     discounts: '',
     eligible: true,
     activePolicy: true,
-    spouse: true,
-    dependents: 2,
+    spouse: 'Feburn Beard',
+    dependents: 'Thooden Beard, Frood Beard',
     pay: 200000,
     payPeriodsPerYear: null,
   }
@@ -99,26 +110,16 @@ export function setup() {
     company_id: 1,
     firstName: 'Jennifer',
     lastName: 'Albertson',
-    discounts: '',
+    discounts: '1',
     eligible: true,
     activePolicy: false,
-    spouse: true,
-    dependents: 1,
+    spouse: 'Leviten Albertson',
+    dependents: 'Fender Albertson',
     pay: 200000,
     payPeriodsPerYear: null,
   }
 
   addEmployee(employee3)
-
-  const discount: Discount = {
-    id: 1,
-    company_id: 1,
-    label: 'A Name',
-    flatValue: 0,
-    percentageValue: 10,
-  }
-
-  addDiscount(discount)
 
   return db
 }
@@ -170,7 +171,7 @@ export function deleteCompany(id: number) {
 }
 
 export function getEmployees(companyId: number) {
-  const stmt = db.prepare<Employee[], [number]>('SELECT * FROM employees WHERE company_id = ?')
+  const stmt = db.prepare<Employee, [number]>('SELECT * FROM employees WHERE company_id = ?')
   return stmt.all(companyId)
 }
 
@@ -184,7 +185,7 @@ export function getEmployee(companyId: number, id: number) {
 export function addEmployee(employee: Employee) {
   const stmt = db.prepare<
     undefined,
-    [number, string, string, string, boolean, boolean, boolean, number, number, number | null]
+    [number, string, string, string, boolean, boolean, string, string, number, number | null]
   >(
     'INSERT INTO employees (company_id, firstName, lastName, discounts, eligible, activePolicy, spouse, dependents, pay, payPeriodsPerYear) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
   )
@@ -216,8 +217,8 @@ export function updateEmployee(employee: Employee) {
       string,
       boolean,
       boolean,
-      boolean,
-      number,
+      string,
+      string,
       number,
       number | null,
       number,
@@ -285,17 +286,19 @@ export function deleteDiscount(id: number) {
 }
 
 export function getAudits(employeeId: number) {
-  const stmt = db.prepare('SELECT * FROM audits WHERE employee_id = ?')
+  const stmt = db.prepare<Audit, [number]>('SELECT * FROM audits WHERE employee_id = ?')
   return stmt.all(employeeId)
 }
 
 export function getAudit(id: number) {
-  const stmt = db.prepare('SELECT * FROM audits WHERE id = ?')
+  const stmt = db.prepare<Audit, [number]>('SELECT * FROM audits WHERE id = ?')
   return stmt.get(id)
 }
 
 export function addAudit(audit: Audit) {
-  const stmt = db.prepare('INSERT INTO audits (employee_id, type) VALUES (?, ?)')
+  const stmt = db.prepare<undefined, [number, string]>(
+    'INSERT INTO audits (employee_id, type) VALUES (?, ?)',
+  )
   stmt.run(audit.employee_id, audit.type)
 }
 
@@ -304,11 +307,13 @@ export function updateAudit(audit: Audit) {
     throw new Error('Audit ID is required for update')
   }
 
-  const stmt = db.prepare('UPDATE audits SET employee_id = ?, type = ? WHERE id = ?')
+  const stmt = db.prepare<undefined, [number, string, number]>(
+    'UPDATE audits SET employee_id = ?, type = ? WHERE id = ?',
+  )
   stmt.run(audit.employee_id, audit.type, audit.id)
 }
 
 export function deleteAudit(id: number) {
-  const stmt = db.prepare('DELETE FROM audits WHERE id = ?')
+  const stmt = db.prepare<undefined, [number]>('DELETE FROM audits WHERE id = ?')
   stmt.run(id)
 }

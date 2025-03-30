@@ -6,8 +6,8 @@ export type Employee = {
   discounts: string
   eligible: boolean
   activePolicy: boolean
-  spouse: boolean
-  dependents: number
+  spouse: string
+  dependents: string
   pay: number
   payPeriodsPerYear: number | null
   totalDeduction?: number
@@ -34,6 +34,7 @@ export type Discount = {
 export type Audit = {
   id?: number
   employee_id: number
+  author_id: number
   type: string
   created_at: string
 }
