@@ -1,5 +1,34 @@
 # Paylocity Take Home
 
+## Install and Run
+
+### Install
+
+Install `bun@1.2.5`
+
+Homebrew
+```
+brew install oven-sh/bun/bun@1.2.5
+```
+
+curl
+```
+curl -fsSL https://bun.sh/install | bash -s "bun-v1.2.5"
+```
+
+Windows
+```
+powershell -c "irm bun.sh/install.ps1|iex"
+```
+
+### Run
+
+```
+bun install
+bun dev
+```
+
+
 ## Story
 
 As a benefits director, I want to be able to see a list of benefit eligible employees, how much they each are spending on premiums on each paycheck, see how many dependents they have, add and remove dependents, and apply and see discounts.
